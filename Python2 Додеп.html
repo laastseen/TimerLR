@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Дрон-Гонки: Таймер и Очередь</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #3498db;
+            --success: #27ae60;
+            --warning: #f39c12;
+            --danger: #c0392b;
+            --light: #ecf0f1;
+            --bg: #f4f7f6;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 30px;
+        }
+
+        @media (max-width: 968px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 8px 12px rgba(0,0,0,0.15);
+        }
+
+        h2 { 
+            margin-top: 0; 
+            color: var(--primary); 
+            display: flex; 
+            align-items: center; 
+            gap: 15px;
+            font-size: 2rem;
+        }
+
+        /* Блок 1: Общий таймер */
+        .timer-display {
+            font-size: 6rem;
+            font-weight: bold;
+            text-align: center;
+            font-variant-numeric: tabular-nums;
+            margin: 30px 0;
+            color: var(--primary);
+            letter-spacing: 4px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+
+        .time-inputs {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .input-group label {
+            font-size: 0.9rem;
+            color: #666;
+            font-weight: 600;
+        }
+
+        input[type="number"] {
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            width: 80px;
+            text-align: center;
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        select {
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1.3rem;
+            width: 100%;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        button {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1.1rem;
+            transition: 0.2s;
+        }
+
+        .btn-start { background-color: var(--success); color: white; }
+        .btn-stop { background-color: var(--warning); color: white; }
+        .btn-reset { background-color: var(--danger); color: white; }
+        .btn-add { 
+            background-color: var(--accent); 
+            color: white; 
+            width: 100%; 
+            margin-bottom: 20px; 
+            font-size: 1.4rem;
+            padding: 18px;
+        }
+        
+        button:hover { opacity: 0.9; transform: translateY(-2px); }
+        button:disabled { background-color: #ccc; cursor: not-allowed; transform: none; }
+
+        /* Блок 2: Таблица */
+        .table-container {
+            overflow-x: auto;
+            margin-top: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            text-align: left;
+            padding: 20px 15px;
+            border-bottom: 2px solid #eee;
+        }
+
+        th { 
+            background-color: var(--light); 
+            color: #555; 
+            font-size: 1.2rem; 
+            text-transform: uppercase;
+            font-weight: 700;
+        }
+
+        td {
+            font-size: 1.4rem;
+        }
+
+        .status-badge {
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            display: inline-block;
+            min-width: 120px;
+            text-align: center;
+        }
+
+        .status-registered { background-color: #e1f5fe; color: #0288d1; }
+        .status-flying { background-color: #fff3e0; color: #ef6c00; animation: pulse 2s infinite; }
+        .status-finished { background-color: #e8f5e9; color: #2e7d32; }
+
+        .flight-timer {
+            font-weight: bold;
+            font-variant-numeric: tabular-nums;
+            font-size: 1.8rem;
+            color: var(--primary);
+        }
+        
+        .timer-warning { color: var(--danger); }
+
+        /* Стили для приоритета и очереди */
+        .priority-row {
+            background-color: #fffde7;
+            border-left: 8px solid var(--warning);
+        }
+        
+        .queue-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #7f8c8d;
+            width: 60px;
+            display: inline-block;
+        }
+        
+        .priority-badge {
+            font-size: 1rem;
+            background: var(--warning);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 6px;
+            margin-left: 10px;
+            vertical-align: middle;
+            display: inline-block;
+        }
+
+        .flight-count-badge {
+            background: #eee;
+            padding: 10px 15px;
+            border-radius: 15px;
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #555;
+            display: inline-block;
+            min-width: 100px;
+            text-align: center;
+        }
+        
+        .flight-count-zero {
+            background: #ffe0b2;
+            color: #e65100;
+            border: 2px solid #ffcc80;
+            padding: 10px 15px;
+            border-radius: 15px;
+            font-size: 1.3rem;
+            font-weight: bold;
+            display: inline-block;
+            min-width: 100px;
+            text-align: center;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.6; }
+            100% { opacity: 1; }
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+        .modal-content h3 {
+            font-size: 2rem;
+            margin-bottom: 20px;
+        }
+        .modal-content p {
+            font-size: 1.4rem;
+            color: #666;
+        }
+        .modal-buttons {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-top: 30px;
+        }
+        .btn-7 { 
+            background-color: var(--accent); 
+            color: white; 
+            font-size: 1.5rem; 
+            padding: 20px 40px;
+        }
+        .btn-12 { 
+            background-color: var(--primary); 
+            color: white; 
+            font-size: 1.5rem; 
+            padding: 20px 40px;
+        }
+
+        @media (max-width: 768px) {
+            .timer-display {
+                font-size: 3.5rem;
+            }
+            td {
+                font-size: 1.1rem;
+                padding: 15px 10px;
+            }
+            .queue-number {
+                font-size: 1.5rem;
+            }
+            .status-badge {
+                font-size: 0.9rem;
+                padding: 8px 12px;
+            }
+            .flight-timer {
+                font-size: 1.4rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- БЛОК 1: Общий Таймер -->
+    <div class="card">
+        <h2>⏱ Общий Таймер</h2>
+        <div class="timer-display" id="globalTimer">00:00:00</div>
+        <div class="controls">
+            <div class="time-inputs">
+                <div class="input-group">
+                    <label>Часы</label>
+                    <input type="number" id="globalHoursInput" value="0" min="0" max="99">
+                </div>
+                <div class="input-group">
+                    <label>Минуты</label>
+                    <input type="number" id="globalMinutesInput" value="30" min="0" max="59">
+                </div>
+            </div>
+        </div>
+        <div class="controls" style="margin-top: 15px;">
+            <button class="btn-start" onclick="startGlobalTimer()">Старт</button>
+            <button class="btn-stop" onclick="pauseGlobalTimer()">Пауза</button>
+            <button class="btn-reset" onclick="resetGlobalTimer()">Сброс</button>
+        </div>
+    </div>
+
+    <!-- БЛОК 2: Таблица пилотов -->
+    <div class="card">
+        <h2>🚁 Запись на полеты</h2>
+        
+        <div style="display: flex; gap: 15px; align-items: center; margin-bottom: 20px;">
+            <select id="pilotSelect" style="flex: 1;">
+                <option value="" disabled selected>Выберите номер участника</option>
+                <option value="1">Участник №1</option>
+                <option value="2">Участник №2</option>
+                <option value="3">Участник №3</option>
+                <option value="4">Участник №4</option>
+                <option value="5">Участник №5</option>
+            </select>
+            <button class="btn-add" style="width: auto; margin-bottom: 0;" onclick="addPilot()">Записать</button>
+        </div>
+        
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 80px;">#</th>
+                        <th style="width: 200px;">Участник</th>
+                        <th style="width: 120px;">Полеты</th>
+                        <th style="width: 150px;">Статус</th>
+                        <th style="width: 150px;">Таймер</th>
+                        <th style="text-align: right;">Действие</th>
+                    </tr>
+                </thead>
+                <tbody id="pilotTableBody">
+                    <!-- Сюда добавляются пилоты -->
+                </tbody>
+            </table>
+        </div>
+        <div style="margin-top: 30px; text-align: right;">
+             <button onclick="clearAllData()" style="background:#95a5a6; color:white; font-size:1rem; padding: 12px 25px;">Сбросить таблицу</button>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно выбора времени -->
+<div class="modal" id="timeSelectModal">
+    <div class="modal-content">
+        <h3 id="modalTitle">Старт полета</h3>
+        <p>Выберите длительность:</p>
+        <div class="modal-buttons">
+            <button class="btn-7" onclick="confirmStartFlight(7)">7 минут</button>
+            <button class="btn-12" onclick="confirmStartFlight(12)">12 минут</button>
+        </div>
+        <button onclick="closeModal()" style="margin-top:25px; background:transparent; color:#666; border: 2px solid #ccc; padding: 12px 30px; font-size: 1.1rem;">Отмена</button>
+    </div>
+</div>
+
+<script>
+    // --- ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ---
+    let globalTimerInterval;
+    let globalSeconds = 0;
+    let isGlobalRunning = false;
+
+    // Данные пилотов
+    let pilots = JSON.parse(localStorage.getItem('dronePilots')) || [];
+    let currentPilotIndexToStart = -1; 
+
+    // --- ИНИЦИАЛИЗАЦИЯ ---
+    renderTable();
+    updateGlobalDisplay();
+
+    // --- ЛОГИКА ОБЩЕГО ТАЙМЕРА (С ЧАСАМИ И МИНУТАМИ) ---
+    function startGlobalTimer() {
+        if (isGlobalRunning) return;
+        
+        const hours = parseInt(document.getElementById('globalHoursInput').value) || 0;
+        const minutes = parseInt(document.getElementById('globalMinutesInput').value) || 0;
+        
+        if (globalSeconds === 0) {
+            globalSeconds = (hours * 3600) + (minutes * 60);
+        }
+
+        if (globalSeconds === 0) {
+            alert("Укажите время больше 0!");
+            return;
+        }
+
+        isGlobalRunning = true;
+        globalTimerInterval = setInterval(() => {
+            if (globalSeconds > 0) {
+                globalSeconds--;
+                updateGlobalDisplay();
+                saveState(); 
+            } else {
+                pauseGlobalTimer();
+                alert("Общее время вышло!");
+            }
+        }, 1000);
+        saveState();
+    }
+
+    function pauseGlobalTimer() {
+        isGlobalRunning = false;
+        clearInterval(globalTimerInterval);
+        saveState();
+    }
+
+    function resetGlobalTimer() {
+        pauseGlobalTimer();
+        globalSeconds = 0;
+        updateGlobalDisplay();
+        saveState();
+    }
+
+    function updateGlobalDisplay() {
+        const h = Math.floor(globalSeconds / 3600);
+        const m = Math.floor((globalSeconds % 3600) / 60);
+        const s = globalSeconds % 60;
+        
+        const hStr = h.toString().padStart(2, '0');
+        const mStr = m.toString().padStart(2, '0');
+        const sStr = s.toString().padStart(2, '0');
+        
+        document.getElementById('globalTimer').innerText = `${hStr}:${mStr}:${sStr}`;
+    }
+
+    // --- ЛОГИКА ТАБЛИЦЫ ПИЛОТОВ ---
+
+    function addPilot() {
+        const select = document.getElementById('pilotSelect');
+        const number = select.value;
+        
+        if (!number) return alert("Выберите номер участника!");
+        
+        const existingPilot = pilots.find(p => p.number == number);
+        
+        if (existingPilot) {
+            if (existingPilot.status !== 'finished') {
+                return alert(`Участник №${number} уже в очереди или летает!`);
+            }
+            existingPilot.status = 'registered';
+            existingPilot.flightTimeLeft = 0;
+        } else {
+            pilots.push({
+                id: Date.now(),
+                number: number,
+                status: 'registered', 
+                flightCount: 0,
+                flightTimeLeft: 0,
+                flightInterval: null
+            });
+        }
+
+        select.value = "";
+        saveState();
+        renderTable();
+    }
+
+    function renderTable() {
+        const tbody = document.getElementById('pilotTableBody');
+        tbody.innerHTML = '';
+
+        const sortedPilots = [...pilots].sort((a, b) => {
+            const statusOrder = { 'flying': 0, 'registered': 1, 'finished': 2 };
+            if (statusOrder[a.status] !== statusOrder[b.status]) {
+                return statusOrder[a.status] - statusOrder[b.status];
+            }
+
+            if (a.status === 'registered' && b.status === 'registered') {
+                if (a.flightCount === 0 && b.flightCount > 0) return -1;
+                if (a.flightCount > 0 && b.flightCount === 0) return 1;
+                return 0;
+            }
+            
+            return 0;
+        });
+
+        sortedPilots.forEach((pilot, visualIndex) => {
+            const realIndex = pilots.findIndex(p => p.id === pilot.id);
+            
+            const tr = document.createElement('tr');
+            
+            let rowClass = '';
+            let queueDisplay = visualIndex + 1;
+            let isPriority = false;
+
+            if (pilot.status === 'registered' && pilot.flightCount === 0) {
+                rowClass = 'priority-row';
+                isPriority = true;
+            }
+            if (pilot.status === 'flying') {
+                queueDisplay = '🔥'; 
+            }
+            if (pilot.status === 'finished') {
+                queueDisplay = '-';
+            }
+
+            let statusClass = '';
+            let statusText = '';
+            let actionButton = '';
+            let timerDisplay = '-';
+
+            if (pilot.status === 'registered') {
+                statusClass = 'status-registered';
+                statusText = 'Ожидание';
+                actionButton = `<button class="btn-start" onclick="prepareStartFlight(${realIndex})">Старт</button>`;
+            } else if (pilot.status === 'flying') {
+                statusClass = 'status-flying';
+                statusText = 'В ПОЛЕТЕ';
+                const m = Math.floor(pilot.flightTimeLeft / 60);
+                const s = pilot.flightTimeLeft % 60;
+                timerDisplay = `<span class="flight-timer ${pilot.flightTimeLeft < 60 ? 'timer-warning' : ''}">${m}:${s.toString().padStart(2, '0')}</span>`;
+                actionButton = `<button class="btn-stop" onclick="finishFlight(${realIndex})">Финиш</button>`;
+            } else if (pilot.status === 'finished') {
+                statusClass = 'status-finished';
+                statusText = 'Готов';
+                actionButton = `<button onclick="resetPilot(${realIndex})" style="font-size:1rem; background:#ddd; color:#333; padding: 10px 20px;">Сброс</button>`;
+                timerDisplay = '0:00';
+            }
+
+            const countClass = pilot.flightCount === 0 ? 'flight-count-zero' : 'flight-count-badge';
+            const priorityBadge = isPriority ? '<span class="priority-badge">ПРИОРИТЕТ</span>' : '';
+
+            tr.className = rowClass;
+            tr.innerHTML = `
+                <td><div class="queue-number">${queueDisplay}</div></td>
+                <td><strong>Участник №${pilot.number}</strong> ${priorityBadge}</td>
+                <td><span class="${countClass}">${pilot.flightCount} раз</span></td>
+                <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                <td>${timerDisplay}</td>
+                <td style="text-align: right;">${actionButton}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    // --- ЛОГИКА ПОЛЕТА ---
+
+    function prepareStartFlight(index) {
+        currentPilotIndexToStart = index;
+        const pilot = pilots[index];
+        document.getElementById('modalTitle').innerText = `Старт для Участника №${pilot.number}`;
+        document.getElementById('timeSelectModal').style.display = 'flex';
+    }
+
+    function closeModal() {
+        document.getElementById('timeSelectModal').style.display = 'none';
+        currentPilotIndexToStart = -1;
+    }
+
+    function confirmStartFlight(minutes) {
+        if (currentPilotIndexToStart === -1) return;
+        
+        const pilot = pilots[currentPilotIndexToStart];
+        pilot.flightCount++;
+        pilot.status = 'flying';
+        pilot.flightTimeLeft = minutes * 60;
+        
+        if (pilot.flightInterval) clearInterval(pilot.flightInterval);
+        
+        pilot.flightInterval = setInterval(() => {
+            if (pilot.flightTimeLeft > 0) {
+                pilot.flightTimeLeft--;
+                saveState(); 
+                renderTable(); 
+            } else {
+                clearInterval(pilot.flightInterval);
+            }
+        }, 1000);
+
+        closeModal();
+        saveState();
+        renderTable();
+    }
+
+    function finishFlight(index) {
+        const pilot = pilots[index];
+        clearInterval(pilot.flightInterval);
+        pilot.status = 'finished';
+        pilot.flightTimeLeft = 0;
+        saveState();
+        renderTable();
+    }
+    
+    function resetPilot(index) {
+        const pilot = pilots[index];
+        pilot.status = 'registered';
+        saveState();
+        renderTable();
+    }
+
+    // --- СОХРАНЕНИЕ ДАННЫХ ---
+    function saveState() {
+        const pilotsToSave = pilots.map(p => ({
+            ...p,
+            flightInterval: null 
+        }));
+        
+        localStorage.setItem('dronePilots', JSON.stringify(pilotsToSave));
+        localStorage.setItem('globalSeconds', globalSeconds);
+        localStorage.setItem('isGlobalRunning', isGlobalRunning);
+    }
+
+    function loadState() {
+        const savedSeconds = localStorage.getItem('globalSeconds');
+        const savedRunning = localStorage.getItem('isGlobalRunning');
+        
+        if (savedSeconds) globalSeconds = parseInt(savedSeconds);
+        if (savedRunning === 'true' && globalSeconds > 0) {
+            startGlobalTimer();
+        }
+        
+        pilots.forEach(p => {
+            if (p.status === 'flying' && p.flightTimeLeft > 0) {
+                 p.flightInterval = setInterval(() => {
+                    if (p.flightTimeLeft > 0) {
+                        p.flightTimeLeft--;
+                        saveState();
+                        renderTable();
+                    }
+                }, 1000);
+            }
+        });
+        
+        updateGlobalDisplay();
+        renderTable();
+    }
+
+    function clearAllData() {
+        if(confirm("Удалить всех пилотов и таймеры?")) {
+            localStorage.clear();
+            location.reload();
+        }
+    }
+
+    loadState();
+
+</script>
+
+</body>
+</html>
